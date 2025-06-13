@@ -1,0 +1,71 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "mysql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id             Int            @id @default(autoincrement())
+  nombres        String
+  apellidos      String
+  email          String         @unique
+  password       String
+  deviceLink     String
+  createdAt      DateTime       @default(now())
+  pacientes      Paciente[]
+  medicines      Medicine[]
+}
+
+model Paciente {
+  id               Int            @id @default(autoincrement())
+  nombre           String
+  sexo             String
+  edad             Int
+  enfermedades     String
+  telefonoCuidador String
+  userId           Int
+  user             User           @relation(fields: [userId], references: [id])
+  createdAt        DateTime       @default(now())
+  medicines        Medicine[]
+  supportFamilies  SupportFamily[]
+}
+
+model Medicine {
+  id              Int       @id @default(autoincrement())
+  nombre          String
+  dosis           String
+  frecuencia      String
+  horaFecha       DateTime
+  createdAt       DateTime  @default(now())
+  taken           Boolean   @default(false)
+  dosesTaken      Int       @default(0)
+  userId          Int
+  pacienteId      Int?
+  durationInDays  Int?
+  totalDoses      Int?
+  createdBy       String    @default("manual")
+  user            User      @relation(fields: [userId], references: [id])
+  paciente        Paciente? @relation(fields: [pacienteId], references: [id])
+}
+
+model SupportFamily {
+  id          Int      @id @default(autoincrement())
+  phoneNumber String
+  status      String   @default("pending") // pending, active, rejected
+  pacienteId  Int
+  paciente    Paciente @relation(fields: [pacienteId], references: [id])
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@map("support_family")
+}
+
