@@ -28,7 +28,7 @@ export class AuthService {
         email: user.email,
         nombres: user.nombres,
         apellidos: user.apellidos,
-        deviceLink: user.deviceLink
+        
       }
     };
   }

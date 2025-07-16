@@ -8,7 +8,7 @@ export interface User {
   apellidos: string;
   email: string;
   password: string;
-  deviceLink: string;
+
 }
 
 @Injectable()
