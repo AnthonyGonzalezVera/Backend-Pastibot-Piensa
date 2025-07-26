@@ -3,18 +3,17 @@ import { PrismaService } from '../prisma/prisma.service';
 import { CreateMedicineDto, MedicineCreatedBy } from './dto/create-medicine.dto';
 import { UpdateMedicineDto } from './dto/update-medicine.dto';
 
-// Define a type that mimics Prisma.MedicineCreateManyInput as much as possible
 interface MedicineCreateInput {
   nombre: string;
   dosis: string;
   frecuencia: string;
-  horaFecha: Date; // Prisma expects Date objects for DateTime
-  taken: boolean; // Not optional, has default in schema
-  dosesTaken: number; // Not optional, has default in schema
+  horaFecha: Date;
+  taken: boolean;
+  dosesTaken: number;
   userId: number;
-  pacienteId: number | null; // Must be null, not undefined
-  durationInDays: number | null; // Must be null, not undefined
-  totalDoses: number | null; // Must be null, not undefined
+  pacienteId: number | null;
+  durationInDays: number | null;
+  totalDoses: number | null;
   createdBy: string;
 }
 
@@ -25,7 +24,6 @@ export class MedicinesService {
   async create(createMedicineDto: CreateMedicineDto, userId: number) {
     const { nombre, dosis, frecuencia, horaFecha, taken, dosesTaken, pacienteId, durationInDays, totalDoses, createdBy } = createMedicineDto;
 
-    // Normalizar los datos
     const normalizedRest = {
       nombre,
       dosis,
@@ -39,7 +37,6 @@ export class MedicinesService {
       createdBy: createdBy ?? MedicineCreatedBy.MANUAL
     };
 
-    // Si hay duración o dosis totales, crear múltiples entradas
     if (normalizedRest.durationInDays || normalizedRest.totalDoses) {
       const medicinesToCreate: MedicineCreateInput[] = [];
       const startDate = new Date(normalizedRest.horaFecha);
@@ -49,7 +46,6 @@ export class MedicinesService {
         endDate.setDate(endDate.getDate() + normalizedRest.durationInDays);
       }
 
-      // Calcular dosis por día basado en la frecuencia
       let dosesPerDay = 1;
       if (normalizedRest.frecuencia.toLowerCase().includes('cada')) {
         const match = normalizedRest.frecuencia.match(/cada (\d+)/i);
@@ -72,7 +68,7 @@ export class MedicinesService {
           userId: userId,
           pacienteId: normalizedRest.pacienteId,
           durationInDays: normalizedRest.durationInDays,
-          totalDoses: 1, // Set to 1 for individual dose in bulk creation
+          totalDoses: 1,
           createdBy: normalizedRest.createdBy
         };
 
@@ -87,7 +83,6 @@ export class MedicinesService {
         skipDuplicates: true,
       });
     } else {
-      // For single medicine creation, use the provided totalDoses or default to 1
       return this.prisma.medicine.create({
         data: {
           nombre: normalizedRest.nombre,
@@ -99,21 +94,38 @@ export class MedicinesService {
           userId: userId,
           pacienteId: normalizedRest.pacienteId,
           durationInDays: normalizedRest.durationInDays,
-          totalDoses: normalizedRest.totalDoses ?? 1, // Use provided totalDoses or default to 1
+          totalDoses: normalizedRest.totalDoses ?? 1,
           createdBy: normalizedRest.createdBy
         },
       });
     }
   }
 
+  // ✅ MÉTODO MODIFICADO AQUÍ
   async findAll(userId: number) {
-    return this.prisma.medicine.findMany({
-      where: { userId },
-      orderBy: { horaFecha: 'asc' },
-      include: {
-        paciente: true,
+    const meds = await this.prisma.medicine.findMany({
+      where: {
+        userId,
+        createdBy: 'MANUAL',
       },
+      orderBy: {
+        horaFecha: 'desc',
+      },
+      take: 50, // Tomamos un rango amplio para filtrar después
     });
+
+    const unicos: any[] = [];
+    const nombres = new Set();
+
+    for (const med of meds) {
+      if (!nombres.has(med.nombre)) {
+        unicos.push(med);
+        nombres.add(med.nombre);
+      }
+      if (unicos.length === 4) break;
+    }
+
+    return unicos;
   }
 
   async findOne(id: number, userId: number) {
@@ -155,4 +167,4 @@ export class MedicinesService {
       where: { id },
     });
   }
-} 
+}
