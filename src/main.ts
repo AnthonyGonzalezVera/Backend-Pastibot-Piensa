@@ -4,15 +4,26 @@ import { ValidationPipe } from '@nestjs/common';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
-  
-  // Configurar CORS
+
+  // ✅ Permitir localhost y Vercel
+  const allowedOrigins = [
+    'http://localhost:4200',
+    'https://frontend-pastibot-piensa.vercel.app'
+  ];
+
   app.enableCors({
-    origin: 'http://localhost:4200', // URL del frontend
+    origin: (origin, callback) => {
+      if (!origin || allowedOrigins.includes(origin)) {
+        callback(null, true);
+      } else {
+        callback(new Error('Not allowed by CORS'));
+      }
+    },
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  // Configurar validación global
+  // ✅ Validación global
   app.useGlobalPipes(new ValidationPipe({
     whitelist: true,
     transform: true,
