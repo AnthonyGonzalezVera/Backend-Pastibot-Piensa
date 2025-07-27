@@ -7,9 +7,12 @@ import { UsersModule } from './users/users.module';
 import { PacientesModule } from './pacientes/pacientes.module';
 import { MedicinesModule } from './medicines/medicines.module';
 import { SupportFamilyModule } from './support-family/support-family.module';
+import { ConfigModule } from '@nestjs/config';
+
 
 @Module({
   imports: [
+    ConfigModule.forRoot(),
     AuthModule,
     UsersModule,
     PacientesModule,
