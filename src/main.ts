@@ -11,17 +11,16 @@ async function bootstrap() {
     'https://frontend-pastibot-piensa.vercel.app'
   ];
 
-  app.enableCors({
-    origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
-        callback(null, true);
-      } else {
-        callback(new Error('Not allowed by CORS'));
-      }
-    },
-    methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
-    credentials: true,
-  });
+ app.enableCors({
+  origin: [
+    'http://localhost:4200',
+    'https://frontend-pastibot-piensa.vercel.app',
+    'https://frontend-pastibot-piensa-oa0ptuy9a.vercel.app'
+  ],
+  methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
+  credentials: true,
+});
+
 
   // ✅ Validación global
   app.useGlobalPipes(new ValidationPipe({
