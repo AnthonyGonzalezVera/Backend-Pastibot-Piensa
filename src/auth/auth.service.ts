@@ -34,13 +34,10 @@ export class AuthService {
     };
   }
 
-  // ✅ Hashea la contraseña y registra al usuario
+  // ✅ REGISTRO CORREGIDO: sin volver a hashear la contraseña
   async register(userData: any) {
-    const hashedPassword = await bcrypt.hash(userData.password, 10);
-    const newUser = await this.usersService.create({
-      ...userData,
-      password: hashedPassword
-    });
+    // Ya NO se hace hash aquí. Lo hace internamente UsersService
+    const newUser = await this.usersService.create(userData);
     return this.login(newUser);
   }
 }

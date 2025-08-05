@@ -101,7 +101,7 @@ export class MedicinesService {
     }
   }
 
-  // ✅ MÉTODO MODIFICADO AQUÍ
+  // ✅ Para Activar Dispensador (máximo 4 únicos, MANUAL)
   async findAll(userId: number) {
     const meds = await this.prisma.medicine.findMany({
       where: {
@@ -111,7 +111,7 @@ export class MedicinesService {
       orderBy: {
         horaFecha: 'desc',
       },
-      take: 50, // Tomamos un rango amplio para filtrar después
+      take: 50,
     });
 
     const unicos: any[] = [];
@@ -126,6 +126,21 @@ export class MedicinesService {
     }
 
     return unicos;
+  }
+
+  // ✅ Para Agenda: Diario / Semanal / Mensual (sin límite)
+  async findAllExpanded(userId: number) {
+    return this.prisma.medicine.findMany({
+      where: {
+        userId,
+      },
+      orderBy: {
+        horaFecha: 'asc',
+      },
+      include: {
+        paciente: true,
+      },
+    });
   }
 
   async findOne(id: number, userId: number) {
