@@ -5,7 +5,7 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ CORS robusto para Vercel + localhost
+  // ✅ Lista de orígenes permitidos (Vercel + localhost)
   const allowedOrigins = [
     'http://localhost:4200',
     'https://frontend-pastibot-piensa.vercel.app',
@@ -13,11 +13,13 @@ async function bootstrap() {
     'https://frontend-pastibot-piensa-rol74k7ns.vercel.app',
   ];
 
+  // ✅ Configurar CORS usando solo enableCors
   app.enableCors({
     origin: (origin, callback) => {
       if (!origin || allowedOrigins.includes(origin)) {
         callback(null, true);
       } else {
+        console.warn(`❌ Bloqueado por CORS: ${origin}`);
         callback(new Error('Not allowed by CORS'));
       }
     },
@@ -25,27 +27,10 @@ async function bootstrap() {
     credentials: true,
   });
 
-  // Middleware adicional como fallback
-  app.use((req, res, next) => {
-    const origin = req.headers.origin;
-    if (allowedOrigins.includes(origin)) {
-      res.setHeader('Access-Control-Allow-Origin', origin);
-      res.setHeader('Access-Control-Allow-Credentials', 'true');
-    }
-    res.setHeader('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.setHeader('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS');
-
-    // ⚠️ Muy importante para Render
-    if (req.method === 'OPTIONS') {
-      return res.sendStatus(204);
-    }
-
-    next();
-  });
-
-  // Validación global
+  // ✅ Validaciones globales
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
+  // ✅ Escuchar en el puerto de Render
   await app.listen(process.env.PORT || 3000);
 }
 
