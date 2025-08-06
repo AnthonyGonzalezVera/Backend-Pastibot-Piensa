@@ -5,31 +5,48 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Configurar CORS para desarrollo y producción (Vercel)
+  // ✅ Configurar CORS para Vercel y desarrollo local
   app.enableCors({
     origin: [
       'http://localhost:4200',
-      'https://frontend-pastibot-piensa.vercel.app'
+      'https://frontend-pastibot-piensa.vercel.app',
     ],
     methods: 'GET,HEAD,PUT,PATCH,POST,DELETE,OPTIONS',
     credentials: true,
   });
 
-  // 🔧 Middleware adicional por si Render ignora CORS
+  // 🔧 Middleware manual adicional por si Render no respeta el enableCors
   app.use((req, res, next) => {
-    res.header('Access-Control-Allow-Origin', 'https://frontend-pastibot-piensa.vercel.app');
-    res.header('Access-Control-Allow-Headers', 'Origin, X-Requested-With, Content-Type, Accept, Authorization');
-    res.header('Access-Control-Allow-Methods', 'GET, POST, PATCH, PUT, DELETE, OPTIONS');
+    const allowedOrigin = 'https://frontend-pastibot-piensa.vercel.app';
+    res.setHeader('Access-Control-Allow-Origin', allowedOrigin);
+    res.setHeader(
+      'Access-Control-Allow-Headers',
+      'Origin, X-Requested-With, Content-Type, Accept, Authorization',
+    );
+    res.setHeader(
+      'Access-Control-Allow-Methods',
+      'GET, POST, PUT, PATCH, DELETE, OPTIONS',
+    );
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+
+    // Manejar opciones preflight
+    if (req.method === 'OPTIONS') {
+      return res.status(204).end();
+    }
+
     next();
   });
 
-  // ✅ Validación global para DTOs
-  app.useGlobalPipes(new ValidationPipe({
-    whitelist: true,
-    transform: true,
-  }));
+  // ✅ Validación global para todos los DTOs
+  app.useGlobalPipes(
+    new ValidationPipe({
+      whitelist: true,
+      transform: true,
+    }),
+  );
 
-  // ✅ Iniciar servidor en puerto del entorno o 3000
-  await app.listen(process.env.PORT ?? 3000);
+  // ✅ Escuchar en el puerto configurado (Render usa process.env.PORT)
+  await app.listen(process.env.PORT || 3000);
 }
+
 bootstrap();
