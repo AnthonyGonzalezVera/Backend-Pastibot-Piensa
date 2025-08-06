@@ -1,4 +1,4 @@
-import { Injectable, UnauthorizedException } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { UsersService } from '../users/users.service';
 import * as bcrypt from 'bcrypt';
@@ -10,6 +10,7 @@ export class AuthService {
     private jwtService: JwtService,
   ) {}
 
+  // ✅ Verifica que el usuario exista y la contraseña coincida
   async validateUser(email: string, password: string): Promise<any> {
     const user = await this.usersService.findByEmail(email);
     if (user && await bcrypt.compare(password, user.password)) {
@@ -19,6 +20,7 @@ export class AuthService {
     return null;
   }
 
+  // ✅ Devuelve token y datos del usuario
   async login(user: any) {
     const payload = { email: user.email, sub: user.id };
     return {
@@ -28,13 +30,14 @@ export class AuthService {
         email: user.email,
         nombres: user.nombres,
         apellidos: user.apellidos,
-        
       }
     };
   }
 
+  // ✅ REGISTRO CORREGIDO: sin volver a hashear la contraseña
   async register(userData: any) {
-    const user = await this.usersService.create(userData);
-    return this.login(user);
+    // Ya NO se hace hash aquí. Lo hace internamente UsersService
+    const newUser = await this.usersService.create(userData);
+    return this.login(newUser);
   }
 }
