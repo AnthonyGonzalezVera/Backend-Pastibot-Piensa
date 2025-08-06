@@ -16,7 +16,6 @@ interface MedicineCreateInput {
   durationInDays: number | null;
   totalDoses: number | null;
   createdBy: string;
-  dispensador: number;
 }
 
 @Injectable()
@@ -49,24 +48,6 @@ export class MedicinesService {
       totalDoses: totalDoses ?? null,
       createdBy: createdBy ?? MedicineCreatedBy.MANUAL,
     };
-
-    const existingDispensadores = await this.prisma.medicine.findMany({
-      where: {
-        userId,
-        createdBy: 'manual',
-        dispensador: { not: null },
-      },
-      select: { dispensador: true },
-      distinct: ['dispensador'],
-    });
-
-    const usados = existingDispensadores.map((m) => m.dispensador);
-    const DISPENSADORES_POSIBLES = [1, 2, 3, 4];
-    const dispensadorLibre = DISPENSADORES_POSIBLES.find((d) => !usados.includes(d));
-
-    if (!dispensadorLibre) {
-      throw new Error('No hay dispensadores disponibles (1–4)');
-    }
 
     // Si tiene duración o múltiples dosis, guardar sin enviar al ESP32
     if (normalizedRest.durationInDays || normalizedRest.totalDoses) {
@@ -102,7 +83,6 @@ export class MedicinesService {
           durationInDays: normalizedRest.durationInDays,
           totalDoses: 1,
           createdBy: normalizedRest.createdBy,
-          dispensador: dispensadorLibre,
         });
 
         const hoursToAdd = 24 / dosesPerDay;
@@ -131,14 +111,12 @@ export class MedicinesService {
         durationInDays: null,
         totalDoses: 1,
         createdBy: normalizedRest.createdBy,
-        dispensador: dispensadorLibre,
       },
     });
 
     try {
       await axios.post('http://192.168.69.249/programar', {
         nombre: med.nombre,
-        dispensador: med.dispensador,
         cantidad: 1,
       });
       console.log(`✔️ Dispensador activado: ${med.nombre}`);
