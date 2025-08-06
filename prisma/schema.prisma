@@ -53,6 +53,9 @@ model Medicine {
   durationInDays  Int?
   totalDoses      Int?
   createdBy       String    @default("manual")
+  dispensador     Int?      // ✅ Campo añadido correctamente
+
+  // Relaciones
   user            User      @relation(fields: [userId], references: [id])
   paciente        Paciente? @relation(fields: [pacienteId], references: [id])
 }
@@ -68,4 +71,3 @@ model SupportFamily {
 
   @@map("support_family")
 }
-

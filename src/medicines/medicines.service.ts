@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '../prisma/prisma.service';
 import { CreateMedicineDto, MedicineCreatedBy } from './dto/create-medicine.dto';
 import { UpdateMedicineDto } from './dto/update-medicine.dto';
+import axios from 'axios';
 
 interface MedicineCreateInput {
   nombre: string;
@@ -15,6 +16,7 @@ interface MedicineCreateInput {
   durationInDays: number | null;
   totalDoses: number | null;
   createdBy: string;
+  dispensador: number;
 }
 
 @Injectable()
@@ -22,7 +24,18 @@ export class MedicinesService {
   constructor(private prisma: PrismaService) {}
 
   async create(createMedicineDto: CreateMedicineDto, userId: number) {
-    const { nombre, dosis, frecuencia, horaFecha, taken, dosesTaken, pacienteId, durationInDays, totalDoses, createdBy } = createMedicineDto;
+    const {
+      nombre,
+      dosis,
+      frecuencia,
+      horaFecha,
+      taken,
+      dosesTaken,
+      pacienteId,
+      durationInDays,
+      totalDoses,
+      createdBy,
+    } = createMedicineDto;
 
     const normalizedRest = {
       nombre,
@@ -34,9 +47,28 @@ export class MedicinesService {
       pacienteId: pacienteId ?? null,
       durationInDays: durationInDays ?? null,
       totalDoses: totalDoses ?? null,
-      createdBy: createdBy ?? MedicineCreatedBy.MANUAL
+      createdBy: createdBy ?? MedicineCreatedBy.MANUAL,
     };
 
+    const existingDispensadores = await this.prisma.medicine.findMany({
+      where: {
+        userId,
+        createdBy: 'manual',
+        dispensador: { not: null },
+      },
+      select: { dispensador: true },
+      distinct: ['dispensador'],
+    });
+
+    const usados = existingDispensadores.map((m) => m.dispensador);
+    const DISPENSADORES_POSIBLES = [1, 2, 3, 4];
+    const dispensadorLibre = DISPENSADORES_POSIBLES.find((d) => !usados.includes(d));
+
+    if (!dispensadorLibre) {
+      throw new Error('No hay dispensadores disponibles (1–4)');
+    }
+
+    // Si tiene duración o múltiples dosis, guardar sin enviar al ESP32
     if (normalizedRest.durationInDays || normalizedRest.totalDoses) {
       const medicinesToCreate: MedicineCreateInput[] = [];
       const startDate = new Date(normalizedRest.horaFecha);
@@ -58,7 +90,7 @@ export class MedicinesService {
       let currentDate = new Date(startDate);
 
       while (currentDate <= endDate) {
-        const medicineDataForCreateMany: MedicineCreateInput = {
+        medicinesToCreate.push({
           nombre: normalizedRest.nombre,
           dosis: normalizedRest.dosis,
           frecuencia: normalizedRest.frecuencia,
@@ -69,39 +101,54 @@ export class MedicinesService {
           pacienteId: normalizedRest.pacienteId,
           durationInDays: normalizedRest.durationInDays,
           totalDoses: 1,
-          createdBy: normalizedRest.createdBy
-        };
-
-        medicinesToCreate.push(medicineDataForCreateMany);
+          createdBy: normalizedRest.createdBy,
+          dispensador: dispensadorLibre,
+        });
 
         const hoursToAdd = 24 / dosesPerDay;
         currentDate.setHours(currentDate.getHours() + hoursToAdd);
       }
 
-      return this.prisma.medicine.createMany({
+      await this.prisma.medicine.createMany({
         data: medicinesToCreate,
         skipDuplicates: true,
       });
-    } else {
-      return this.prisma.medicine.create({
-        data: {
-          nombre: normalizedRest.nombre,
-          dosis: normalizedRest.dosis,
-          frecuencia: normalizedRest.frecuencia,
-          horaFecha: new Date(normalizedRest.horaFecha),
-          taken: normalizedRest.taken,
-          dosesTaken: normalizedRest.dosesTaken,
-          userId: userId,
-          pacienteId: normalizedRest.pacienteId,
-          durationInDays: normalizedRest.durationInDays,
-          totalDoses: normalizedRest.totalDoses ?? 1,
-          createdBy: normalizedRest.createdBy
-        },
-      });
+
+      return { message: 'Medicamentos guardados (varios días), sin enviar al ESP32' };
     }
+
+    // Si es una sola toma, guardar y enviar al ESP32
+    const med = await this.prisma.medicine.create({
+      data: {
+        nombre: normalizedRest.nombre,
+        dosis: normalizedRest.dosis,
+        frecuencia: normalizedRest.frecuencia,
+        horaFecha: new Date(normalizedRest.horaFecha),
+        taken: normalizedRest.taken,
+        dosesTaken: normalizedRest.dosesTaken,
+        userId: userId,
+        pacienteId: normalizedRest.pacienteId,
+        durationInDays: null,
+        totalDoses: 1,
+        createdBy: normalizedRest.createdBy,
+        dispensador: dispensadorLibre,
+      },
+    });
+
+    try {
+      await axios.post('http://192.168.69.249/programar', {
+        nombre: med.nombre,
+        dispensador: med.dispensador,
+        cantidad: 1,
+      });
+      console.log(`✔️ Dispensador activado: ${med.nombre}`);
+    } catch (error) {
+      console.error('❌ Error al activar ESP32:', error.message);
+    }
+
+    return { message: 'Medicamento guardado y enviado al ESP32' };
   }
 
-  // ✅ Para Activar Dispensador (máximo 4 únicos, MANUAL)
   async findAll(userId: number) {
     const meds = await this.prisma.medicine.findMany({
       where: {
@@ -128,27 +175,18 @@ export class MedicinesService {
     return unicos;
   }
 
-  // ✅ Para Agenda: Diario / Semanal / Mensual (sin límite)
   async findAllExpanded(userId: number) {
     return this.prisma.medicine.findMany({
-      where: {
-        userId,
-      },
-      orderBy: {
-        horaFecha: 'asc',
-      },
-      include: {
-        paciente: true,
-      },
+      where: { userId },
+      orderBy: { horaFecha: 'asc' },
+      include: { paciente: true },
     });
   }
 
   async findOne(id: number, userId: number) {
     const medicine = await this.prisma.medicine.findFirst({
       where: { id, userId },
-      include: {
-        paciente: true,
-      },
+      include: { paciente: true },
     });
 
     if (!medicine) {
@@ -159,7 +197,7 @@ export class MedicinesService {
   }
 
   async update(id: number, updateMedicineDto: UpdateMedicineDto, userId: number) {
-    const medicine = await this.findOne(id, userId);
+    await this.findOne(id, userId);
 
     const updateData: any = { ...updateMedicineDto };
     if (updateMedicineDto.horaFecha) {
@@ -169,17 +207,12 @@ export class MedicinesService {
     return this.prisma.medicine.update({
       where: { id },
       data: updateData,
-      include: {
-        paciente: true,
-      },
+      include: { paciente: true },
     });
   }
 
   async remove(id: number, userId: number) {
-    const medicine = await this.findOne(id, userId);
-
-    return this.prisma.medicine.delete({
-      where: { id },
-    });
+    await this.findOne(id, userId);
+    return this.prisma.medicine.delete({ where: { id } });
   }
 }
