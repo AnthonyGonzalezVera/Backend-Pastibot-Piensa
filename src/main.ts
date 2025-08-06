@@ -5,18 +5,14 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Lista de orígenes permitidos (Vercel + localhost)
-  const allowedOrigins = [
-    'http://localhost:4200',
-    'https://frontend-pastibot-piensa.vercel.app',
-    'https://frontend-pastibot-piensa-oa0ptuy9a.vercel.app',
-    'https://frontend-pastibot-piensa-rol74k7ns.vercel.app',
-  ];
-
-  // ✅ Configurar CORS usando solo enableCors
+  // ✅ CORS dinámico para dominios temporales de Vercel y localhost
   app.enableCors({
     origin: (origin, callback) => {
-      if (!origin || allowedOrigins.includes(origin)) {
+      const regexVercel = /^https:\/\/frontend-pastibot-piensa.*\.vercel\.app$/;
+      const isAllowed =
+        !origin || origin === 'http://localhost:4200' || regexVercel.test(origin);
+
+      if (isAllowed) {
         callback(null, true);
       } else {
         console.warn(`❌ Bloqueado por CORS: ${origin}`);
@@ -30,7 +26,7 @@ async function bootstrap() {
   // ✅ Validaciones globales
   app.useGlobalPipes(new ValidationPipe({ whitelist: true, transform: true }));
 
-  // ✅ Escuchar en el puerto de Render
+  // ✅ Escuchar en el puerto asignado por Render
   await app.listen(process.env.PORT || 3000);
 }
 
