@@ -20,13 +20,13 @@ export class SupportFamilyService {
     try {
       const mensaje = `👋 Hola, eres el nuevo cuidador de este paciente: ${paciente.nombre} en la app Pastibot 🩺. 
 
-
 Recibirás recordatorios de medicamentos y actualizaciones importantes. 
 
 ¡Gracias por tu apoyo! ❤️
 
 📲 Accede a la app aquí:
- http://localhost:4200`; // ← cambia esto si subes a Vercel
+https://frontend-pastibot-piensa-rol74k7ns.vercel.app`;
+
       await axios.post(
         'https://api.ultramsg.com/instance133754/messages/chat',
         new URLSearchParams({
