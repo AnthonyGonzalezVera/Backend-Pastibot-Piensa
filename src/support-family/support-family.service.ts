@@ -26,7 +26,7 @@ Recibirás recordatorios de medicamentos y actualizaciones importantes.
 ¡Gracias por tu apoyo! ❤️
 
 📲 Accede a la app aquí:
- https://frontend-pastibot-pien-git-f9c51b-anthonygonzalezveras-projects.vercel.app/caregiver`; // ← cambia esto si subes a Vercel
+ https://frontend-pastibot-pien-git-f9c51b-anthonygonzalezveras-projects.vercel.app?_vercel_share=Q4YFY4OWjktKdDj637gQR3Slrs97yCqq`; // ← cambia esto si subes a Vercel
       await axios.post(
         'https://api.ultramsg.com/instance133754/messages/chat',
         new URLSearchParams({
