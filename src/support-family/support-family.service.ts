@@ -25,7 +25,7 @@ Recibirás recordatorios de medicamentos y actualizaciones importantes.
 ¡Gracias por tu apoyo! ❤️
 
 📲 Accede a la app aquí:
-https://frontend-pastibot-piensa-rol74k7ns.vercel.app`;
+https://frontend-pastibot-piensa-rol74k7ns.vercel.app/caregiver`;
 
       await axios.post(
         'https://api.ultramsg.com/instance133754/messages/chat',
