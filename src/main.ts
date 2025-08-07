@@ -5,12 +5,16 @@ import { ValidationPipe } from '@nestjs/common';
 async function bootstrap() {
   const app = await NestFactory.create(AppModule);
 
-  // ✅ Regex ajustado a "pien" como base
+  // ✅ CORS dinámico para dominios 'pien' y 'piensa'
   app.enableCors({
     origin: (origin, callback) => {
-      const regexVercel = /^https:\/\/frontend-pastibot-pien[\w-]*\.vercel\.app$/;
+      const regexPien = /^https:\/\/frontend-pastibot-pien[\w-]*\.vercel\.app$/;
+      const regexPiensa = /^https:\/\/frontend-pastibot-piensa[\w-]*\.vercel\.app$/;
       const isAllowed =
-        !origin || origin === 'http://localhost:4200' || regexVercel.test(origin);
+        !origin ||
+        origin === 'http://localhost:4200' ||
+        regexPien.test(origin) ||
+        regexPiensa.test(origin);
 
       if (isAllowed) {
         console.log(`✅ Permitido CORS: ${origin}`);
